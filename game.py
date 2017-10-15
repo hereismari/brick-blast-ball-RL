@@ -93,6 +93,10 @@ class Ball():
 
         return False
 
+    def distance_to_line(self, a, b, c):
+        ''' Distance from ball to a line = a * x + b * y + c.'''
+        return abs(a * self.x + b * self.y + c)/math.sqrt(a**2 + b**2)
+
     def check_rect_colision(self, rect):
 
         left = rect.left
@@ -100,45 +104,89 @@ class Ball():
         top = rect.top
         bottom = rect.top + rect.height
 
-        dist_top = abs(top - self.y)
-        dist_bottom = abs(bottom - self.y)
-        dist_left = abs(left - self.x)
-        dist_right = abs(left - self.x)
+        dist_top = self.distance_to_line(0, 1, -top)
+        dist_bottom = self.distance_to_line(0, 1, -bottom)
+        dist_left = self.distance_to_line(1, 0, -left)
+        dist_right = self.distance_to_line(1, 0, -right)
+        
+        x_intersec = (self.x + self.size >= left and self.x - self.size <= right)
+        y_intersec = (self.y - self.size <= bottom and self.y + self.size >= top)
+        # print x_intersec, y_intersec
 
-        min_dist = min([dist_top, dist_bottom, dist_left, dist_right])
+        '''
+        dist_bottom = self.distance_to_line((left + right)/2.0, bottom)
+        dist_left = self.distance(left, (bottom + top)/2.0)
+        dist_right = self.distance(right, (bottom + top)/2.0)
+        '''
+        a = [dist_top, dist_bottom, dist_left, dist_right]
+        min_dist = min(a)
         colision = False
+        count = 0
+
+        if dist_bottom <= self.size and x_intersec:
+            self.y = 2 * (bottom + self.size) - self.y
+            self.angle = math.pi - self.angle
+            print 'bottom up'
+            colision = True
+            count += 1
+        elif dist_top <= self.size and x_intersec:
+            self.y = 2 * (top - self.size) - self.y
+            self.angle = math.pi - self.angle
+            print 'top down'
+            colision = True
+            count += 1
+        elif dist_left <= self.size and y_intersec:
+            self.x = 2 * (left - self.size) - self.x
+            self.angle = - self.angle
+            colision = True
+            print 'left right'
+            count += 1
+        elif dist_right <= self.size and y_intersec:
+            self.x = 2 * (right + self.size) - self.x
+            self.angle = - self.angle
+            colision = True
+            print 'right left'
+            count += 1   
+        '''
 
         # print left, right, bottom, top, self.x, self.y
         if self.x + self.size >= left and self.x - self.size <= right:
             # top down colision
             # if self.y >= top - self.size and self.y <= bottom:
-            if dist_top < dist_bottom and self.y >= top - self.size and self.y <= bottom:
+            if dist_top == min_dist and self.y >= top - self.size and self.y <= bottom:
                 self.y = 2 * (top - self.size) - self.y
                 self.angle = math.pi - self.angle
                 print 'top down'
                 colision = True
+                count += 1
 
             # bottom up colision
-            elif self.y <= bottom + self.size and self.y >= top:
+            elif dist_bottom == min_dist and self.y <= bottom + self.size and self.y >= top:
                 self.y = 2 * (bottom + self.size) - self.y
                 self.angle = math.pi - self.angle
                 print 'bottom up'
                 colision = True
+                count += 1
 
         if self.y <= bottom - self.size and self.y >= top + self.size:
             # right left colision
-            if dist_right < dist_left and self.x <= right + self.size and self.x >= left:
+            if dist_right == min_dist and self.x <= right + self.size and self.x >= left:
                 self.x = 2 * (right + self.size) - self.x
                 self.angle = - self.angle
                 colision = True
                 print 'right left'
+                count += 1
 
             # left right colision
-            elif self.x >= left + self.size and self.x <= right:
+            elif dist_left == min_dist and self.x >= left + self.size and self.x <= right:
                 self.x = 2 * (left + self.size) - self.x
                 self.angle = - self.angle
                 colision = True
                 print 'left right'
+                count += 1
+        '''
+        if count > 0:
+            print count
 
         return colision
 
@@ -218,7 +266,7 @@ class Environment:
             self.random_row()
 
         # generate a +1 ball in one of the empty spaces
-        row[np.random.choice(zero_indexes)] = -1
+        # row[np.random.choice(zero_indexes)] = -1
 
         return row
 
