@@ -16,11 +16,11 @@ python game.py
 python agent.py
 ```
 
-# TODO
+# What you'll find here
 
-- [x] Basic Game
-- [x] Basic Linear Function Sarsa Agent
-- [] Tune Agent
-- [] Actor-Critic Agent
+- [x] Basic Game Environment
+- [x] Linear Function Sarsa Agent
+- [ ] Tune Agent
+- [ ] Actor-Critic Agent (or some other agent that considers a continuous space of actions)
 
 > OBS: This game was made for learning purposes only and is not related to Brick Blast Ball in anyway.
