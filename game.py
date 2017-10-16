@@ -15,6 +15,7 @@ limitations under the License.
 '''
 
 # -------- Imports ------------
+import copy
 from enum import Enum
 import math
 import sys
@@ -33,7 +34,7 @@ SCREEN_SIZE = BLOCK_SIZE * NUM_BLOCKS_X, BLOCK_SIZE * NUM_BLOCKS_Y + 100
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 BLUE = (0, 0, 255)
-BRICK_COLOR = (200, 200, 0)
+BRICK_COLOR = {1: (221, 218, 94), 2: (90, 185, 186), 3: (1, 161, 247), 4: (237, 134, 186)}
 
 
 # ------- Classes ----------
@@ -49,6 +50,7 @@ class GameState(Enum):
 
 
 class Ball():
+    '''Ball in the game.'''
     def __init__(self, (x, y), screen, upper_limit, down_limit, size=8,
                  speed=10):
         self.screen = screen
@@ -63,32 +65,41 @@ class Ball():
         self.down_limit = down_limit
 
     def display(self):
+        '''Draw circle.'''
         pygame.draw.circle(self.screen, self.colour,
                            (int(self.x), int(self.y)), self.size)
 
     def move(self):
+        '''Move ball.'''
         self.x += math.sin(self.angle) * self.speed
         self.y -= math.cos(self.angle) * self.speed
 
-    def check_wall_colision(self):
+    def set_angle(self, new_angle):
+        '''Sets angle to new angle and ensures that angle is [-pi, pi].'''
+        self.angle = new_angle
+        aux_value = (self.angle + math.pi)/(2 * math.pi)  # avoids line > 80
+        correction = 2 * math.pi * math.floor(aux_value)
+        self.angle = self.angle - correction
+
+    def check_wall_collision(self):
         '''Returns true only if the ball colides with the floor.'''
         width = SCREEN_SIZE[0]
 
         if self.x >= width - self.size:
             self.x = 2 * (width - self.size) - self.x
-            self.angle = - self.angle
+            self.set_angle(-1 * self.angle)
 
         elif self.x <= self.size:
             self.x = 2 * self.size - self.x
-            self.angle = - self.angle
+            self.set_angle(-1 * self.angle)
 
         if self.y <= self.upper_limit + self.size:
             self.y = 2 * (self.upper_limit + self.size) - self.y
-            self.angle = math.pi - self.angle
+            self.set_angle(math.pi - self.angle)
 
         elif self.y >= self.down_limit - self.size:
             self.y = 2 * (self.down_limit - self.size) - self.y
-            self.angle = math.pi - self.angle
+            self.set_angle(math.pi - self.angle)
             return True
 
         return False
@@ -97,97 +108,52 @@ class Ball():
         ''' Distance from ball to a line = a * x + b * y + c.'''
         return abs(a * self.x + b * self.y + c)/math.sqrt(a**2 + b**2)
 
-    def check_rect_colision(self, rect):
-
+    def check_rect_collision(self, rect):
+        '''Check collision between ball and a rectangle (brick).'''
+        # TODO: fix small bugs related to left right colisions
+        # print self.angle
+        # rect edges
         left = rect.left
         right = rect.left + rect.width
         top = rect.top
         bottom = rect.top + rect.height
 
+        # distance between rect lines and ball
         dist_top = self.distance_to_line(0, 1, -top)
         dist_bottom = self.distance_to_line(0, 1, -bottom)
         dist_left = self.distance_to_line(1, 0, -left)
         dist_right = self.distance_to_line(1, 0, -right)
         
+        # check x and y intersections
         x_intersec = (self.x + self.size >= left and self.x - self.size <= right)
         y_intersec = (self.y - self.size <= bottom and self.y + self.size >= top)
-        # print x_intersec, y_intersec
-
-        '''
-        dist_bottom = self.distance_to_line((left + right)/2.0, bottom)
-        dist_left = self.distance(left, (bottom + top)/2.0)
-        dist_right = self.distance(right, (bottom + top)/2.0)
-        '''
-        a = [dist_top, dist_bottom, dist_left, dist_right]
-        min_dist = min(a)
+        
         colision = False
-        count = 0
-
-        if dist_bottom <= self.size and x_intersec:
+        # bottom up collision 
+        if dist_bottom <= self.size and x_intersec and abs(self.angle) < math.pi/2.0:
             self.y = 2 * (bottom + self.size) - self.y
-            self.angle = math.pi - self.angle
-            print 'bottom up'
+            self.set_angle(math.pi - self.angle)
+            # print 'bottom up'
             colision = True
-            count += 1
-        elif dist_top <= self.size and x_intersec:
+        # top down collision
+        elif dist_top <= self.size and x_intersec and abs(self.angle) > math.pi/2.0:
             self.y = 2 * (top - self.size) - self.y
-            self.angle = math.pi - self.angle
-            print 'top down'
+            self.set_angle(math.pi - self.angle)
+            # print 'top down'
             colision = True
-            count += 1
-        elif dist_left <= self.size and y_intersec:
+        # left right collision
+        elif dist_left <= self.size and y_intersec and self.angle > 0:
             self.x = 2 * (left - self.size) - self.x
-            self.angle = - self.angle
+            self.set_angle(-1 * self.angle)
             colision = True
-            print 'left right'
-            count += 1
-        elif dist_right <= self.size and y_intersec:
+            # print 'left right'
+        # right left collision
+        elif dist_right <= self.size and y_intersec and self.angle < 0:
             self.x = 2 * (right + self.size) - self.x
-            self.angle = - self.angle
+            self.set_angle(-1 * self.angle)
             colision = True
-            print 'right left'
-            count += 1   
-        '''
-
-        # print left, right, bottom, top, self.x, self.y
-        if self.x + self.size >= left and self.x - self.size <= right:
-            # top down colision
-            # if self.y >= top - self.size and self.y <= bottom:
-            if dist_top == min_dist and self.y >= top - self.size and self.y <= bottom:
-                self.y = 2 * (top - self.size) - self.y
-                self.angle = math.pi - self.angle
-                print 'top down'
-                colision = True
-                count += 1
-
-            # bottom up colision
-            elif dist_bottom == min_dist and self.y <= bottom + self.size and self.y >= top:
-                self.y = 2 * (bottom + self.size) - self.y
-                self.angle = math.pi - self.angle
-                print 'bottom up'
-                colision = True
-                count += 1
-
-        if self.y <= bottom - self.size and self.y >= top + self.size:
-            # right left colision
-            if dist_right == min_dist and self.x <= right + self.size and self.x >= left:
-                self.x = 2 * (right + self.size) - self.x
-                self.angle = - self.angle
-                colision = True
-                print 'right left'
-                count += 1
-
-            # left right colision
-            elif dist_left == min_dist and self.x >= left + self.size and self.x <= right:
-                self.x = 2 * (left + self.size) - self.x
-                self.angle = - self.angle
-                colision = True
-                print 'left right'
-                count += 1
-        '''
-        if count > 0:
-            print count
-
+            # print 'right left'
+ 
         return colision
 
 class Environment:
@@ -195,13 +161,21 @@ class Environment:
        This class not only has all the pygame code to physics and drawing, but
        also has what is needed to interact with an agent.
     '''
-    def __init__(self):
+    def __init__(self, ball_speed=10, state=GameState.MENU):
         pygame.init()
+
+        # agent related attributes
+        self.actions = np.arange(math.pi/2.0 * -1 + 2, math.pi/2.0, 0.1)
+        np.random.shuffle(self.actions)
+        self.number_of_actions = self.actions.shape[0]
 
         # create screen
         self.screen = pygame.display.set_mode(SCREEN_SIZE)
         # screen title
         pygame.display.set_caption("PLEASE WORK")
+
+        # max phase the environement has ever seen
+        self.max_phase = 0
 
         # create clock
         self.clock = pygame.time.Clock()
@@ -218,11 +192,16 @@ class Environment:
         self.LINE_WIDTH = SCREEN_SIZE[0]
 
         # init game
-        self.init_game()
+        self.state = state       
+        self.init_game(ball_speed)
+        
 
-    def init_game(self):
+    def init_game(self, ball_speed):
+        '''Initialize main objects of the game accordingly with the game mode.'''
         self.phase = 0
-        self.state = GameState.MENU
+        if self.state == GameState.HUMAN_PLAYING:
+            self.state = GameState.MENU
+            
         self.waiting_input = False
 
         # stores the bricks values
@@ -236,42 +215,63 @@ class Environment:
                                        SCREEN_SIZE[1] - BLOCK_SIZE + line_height,
                                        SCREEN_SIZE[0], line_height)
         # ball
+        self.ball_speed = ball_speed
         self.ball = Ball((SCREEN_SIZE[0]/2.0, self.bottom_line.top - 16),
                          screen=self.screen,
                          upper_limit=self.top_line.top + line_height,
-                         down_limit=self.bottom_line.top)
+                         down_limit=self.bottom_line.top,
+                         speed=ball_speed)
 
-    def draw_lines(self):
-        # Rect: left, top, width, height
+    def set_ball_position(self):
+        self.ball.x = SCREEN_SIZE[0]/2.0
+        self.ball.y = self.bottom_line.top - 16
+    
+    def step(self, state, action):
+        '''Interaction with the agent.
+            
+            Args:
+                state (tensor): a tensor with the same shape as self.bricks_matrix.
+                action (angle): index of an action in self.actions (ball initial angle).
+            Returns:
+                next_state (tensor): a tensor with the same shaoe as self.bricks_matrix.
+                r (int): reward. -1 if lost, 0 otherwhise.
+        '''
+        self.ball.set_angle(self.actions[action])
+        _, next_state, r = self.run()
+        if r == -1:
+            self.init_game(self.ball_speed)
+        else:
+            # unkown behaviour from the environment
+            self.next_phase()
+            next_state = copy.copy(self.bricks_matrix)   
+        return next_state, r
 
-        pygame.draw.rect(self.screen, WHITE, self.top_line)
-        pygame.draw.rect(self.screen, WHITE, self.bottom_line)
-
+    # ------------------ Create rows ------------------------
     def random_row(self):
         '''For now let's keep this as simple as we can.'''
 
+        # TODO:
         # 0.6 of change of have some brick at each position of the row
         # if there's a brick then: 0.25 of chance of having value V
-        # and 0.15 of chance of having value V * 2
+        # and 0.10 of chance of having value V * 2 and 0.05 of having V * 4
         # obs: it can be full (no zeros) nor empty (only zeros)
-        v = self.phase + 1
-        row = np.random.choice([v, v * 2, 0],
+
+        # NOW: only bricks with v = 1
+        v = 1  # let's make this as simple as possible, v is constant
+        row = np.random.choice([v, 0],
                                self.bricks_matrix.shape[1],
-                               p=[0.25, 0.15, 0.6])
+                               p=[0.6, 0.4])
 
         # if there are no zeros or is full of zeros then generate
         # another row
         zero_indexes = np.nonzero(row == 0)[0]
         if zero_indexes.size == 0 or zero_indexes.size == row.size:
-            self.random_row()
-
-        # generate a +1 ball in one of the empty spaces
-        # row[np.random.choice(zero_indexes)] = -1
+            return self.random_row()
 
         return row
 
     def create_next_row(self):
-        '''Bricks and +1 balls are created randomly.'''
+        '''Bricks are created randomly.'''
 
         # generate a valid random row
         r = self.random_row()
@@ -283,12 +283,15 @@ class Environment:
         # add the row to the beginning
         self.bricks_matrix[1] = r
 
+    # ----------------- Bricks --------------------
     def brick_pos(self, r, c):
+        '''Get a brick pos given its position at self.bricks_matrix.'''
         pos_x = c * BLOCK_SIZE
         pos_y = r * BLOCK_SIZE + BLOCK_SIZE
         return pos_x, pos_y
 
     def create_bricks(self):
+        '''Create bricks that can collide with the ball.''' 
         self.bricks = []
         row, col = np.nonzero(self.bricks_matrix != 0)
         for r, c in zip(row, col):
@@ -297,8 +300,9 @@ class Environment:
                                 self.BRICK_WIDTH, self.BRICK_HEIGHT)
             self.bricks.append((r, c, brick))
 
+    # ----------------- Drawing ---------------------
     def draw_brick(self, r, c, border_size=10):
-        v = self.bricks_matrix[r][c]
+        v = int(self.bricks_matrix[r][c])
         pos_x, pos_y = self.brick_pos(r, c)
         rect = pygame.Rect(pos_x + border_size/2.0,
                            pos_y + border_size/2.0,
@@ -307,7 +311,7 @@ class Environment:
         border = pygame.Rect(pos_x, pos_y,
                              self.BRICK_WIDTH, self.BRICK_HEIGHT)
         pygame.draw.rect(self.screen, WHITE, border)
-        pygame.draw.rect(self.screen, BRICK_COLOR, rect)
+        pygame.draw.rect(self.screen, BRICK_COLOR[v], rect)
 
         # negative_corr = 3 if v < 0 else 0
         s = str(v)
@@ -320,54 +324,15 @@ class Environment:
         row, col = np.nonzero(self.bricks_matrix != 0)
         for r, c in zip(row, col):
             self.draw_brick(r, c)
-
-    def set_ball_angle(self, pos):
-        # vector from ball to the cursor
-        pos_x, pos_y = pos
-        dx = pos_x - self.ball.x
-        dy = pos_y - self.ball.y
-
-        self.ball.angle = math.atan2(dy, dx) + 0.5 * math.pi
-
-    def next_phase(self):
-        self.waiting_input = True
-        self.create_next_row()
-        self.phase += 1
-
-    def check_input(self, mouse_pos):
-        keys = pygame.key.get_pressed()
-
-        if self.state == GameState.MENU:
-            if keys[pygame.K_SPACE]:
-                self.state = GameState.HUMAN_PLAYING
-                self.next_phase()
-        elif self.state == GameState.HUMAN_PLAYING and self.waiting_input:
-            if mouse_pos is not None:
-                self.set_ball_angle(mouse_pos)
-                self.waiting_input = False
-
-    def handle_collisions(self):
-
-        floor_colision = self.ball.check_wall_colision()
-
-        for i, element in enumerate(self.bricks):
-            r, c, b = element
-            if self.ball.check_rect_colision(b):
-                # remove value from brick
-                print self.bricks_matrix[r][c], r, c
-                if self.bricks_matrix[r][c] > 0:
-                    self.bricks_matrix[r][c] -= 1
-
-        # print floor_colision
-        if floor_colision:
-            if np.nonzero(self.bricks_matrix[-1])[0].size:
-                self.init_game()
-            else:
-                self.next_phase()
+    
+    def draw_lines(self):
+        # Rect: left, top, width, height
+        pygame.draw.rect(self.screen, WHITE, self.top_line)
+        pygame.draw.rect(self.screen, WHITE, self.bottom_line)
 
     def show_stats(self):
         if self.font:
-            s = 'PHASE: ' + str(self.phase)
+            s = 'LEVEL: ' + str(self.phase) + ' BEST : ' + str(self.max_phase) 
             size = self.font.size(s)
             font_surface = self.font.render(s, False, WHITE)
             self.screen.blit(font_surface, ((SCREEN_SIZE[0] - size[0])/2, 10))
@@ -393,11 +358,72 @@ class Environment:
         # draw lines
         self.draw_lines()
 
+    # ----------------- Running game -----------------------
+    def set_ball_angle(self, pos):
+        # vector from ball to the cursor
+        pos_x, pos_y = pos
+        dx = pos_x - self.ball.x
+        dy = pos_y - self.ball.y
+
+        self.ball.set_angle(math.atan2(dy, dx) + 0.5 * math.pi)
+
+    def next_phase(self):
+        self.waiting_input = True
+        self.create_next_row()
+        self.phase += 1
+        self.set_ball_position()
+
+    def check_input(self, mouse_pos):
+        keys = pygame.key.get_pressed()
+
+        if self.state == GameState.MENU:
+            if keys[pygame.K_SPACE]:
+                self.state = GameState.HUMAN_PLAYING
+                self.next_phase()
+        elif self.state == GameState.HUMAN_PLAYING and self.waiting_input:
+            if mouse_pos is not None:
+                self.set_ball_angle(mouse_pos)
+                self.waiting_input = False
+
+    def handle_collisions(self):
+        floor_collision = self.ball.check_wall_collision()
+
+        for i, element in enumerate(self.bricks):
+            r, c, b = element
+            if self.ball.check_rect_collision(b):
+                # remove value from brick
+                # print self.bricks_matrix[r][c], r, c
+                if self.bricks_matrix[r][c] > 0:
+                    self.bricks_matrix[r][c] -= 1
+
+        if self.state == GameState.AGENT_PLAYING:
+            final_state = floor_collision and np.nonzero(self.bricks_matrix[-1])[0].size
+            res = floor_collision, copy.copy(self.bricks_matrix), -1 if final_state else 0 
+            if final_state: 
+                self.max_phase = max(self.phase, self.max_phase)            
+                self.init_game(self.ball_speed)
+            return res
+        else:            
+            if floor_collision:
+                if np.nonzero(self.bricks_matrix[-1])[0].size:
+                    self.max_phase = max(self.phase, self.max_phase)
+                    self.init_game(self.ball_speed)
+                else:
+                    self.next_phase()
+
+        return floor_collision
+
     def play(self):
         if not self.waiting_input:
             self.create_bricks()
             self.ball.move()
             self.handle_collisions()
+
+    def play_agent(self):
+        '''Called only when an agent is playing.'''
+        self.create_bricks()
+        self.ball.move()
+        return self.handle_collisions()
 
     def run(self):
         while 1:
@@ -416,10 +442,15 @@ class Environment:
             # check input
             self.check_input(mouse_pos)
 
+            if self.state == GameState.AGENT_PLAYING:
+                res = self.play_agent()
+                if res[0]:
+                    return res
             if self.state == GameState.HUMAN_PLAYING:
                 self.play()
             elif self.state == GameState.MENU:
-                self.show_message("PRESS SPACE TO LAUNCH THE BALL")
+                message = 'PRESS SPACE TO PLAY THE GAME'
+                self.show_message(message)
             elif self.state == GameState.GAME_OVER:
                 self.show_message("GAME OVER. PRESS ENTER TO PLAY AGAIN")
 
