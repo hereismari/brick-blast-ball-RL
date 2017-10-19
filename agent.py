@@ -30,7 +30,7 @@ THETA_OUTPUT = 'pretrained_agent.npy'
 
 class LinearFunctionSarsaAgent():
     
-    def __init__(self, environment, discount_factor=1, _lambda=1):
+    def __init__(self, environment, discount_factor=0.2, _lambda=1):
 
         # pygame environemnt
         self.env = environment
@@ -70,7 +70,7 @@ class LinearFunctionSarsaAgent():
         return 0.01
        
     def get_e(self, s):
-        return 0.05
+        return 0.1
 
     def try_all_actions(self, s):
         #print 'state:'
@@ -119,6 +119,8 @@ class LinearFunctionSarsaAgent():
                 phase += 1
                 # execute action
                 print 'action: ', a, self.env.actions[a]
+                print 'state:'
+                print s
                 next_s, r = self.env.step(copy.copy(s), a)
               
                 # get parameters that represent this state and action

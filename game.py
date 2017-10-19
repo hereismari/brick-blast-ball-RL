@@ -165,8 +165,7 @@ class Environment:
         pygame.init()
 
         # agent related attributes
-        self.actions = np.arange(math.pi/2.0 * -1 + 2, math.pi/2.0, 0.1)
-        np.random.shuffle(self.actions)
+        self.actions = np.arange(math.pi/2.0 * -1 + 0.1, math.pi/2.0, 0.1)
         self.number_of_actions = self.actions.shape[0]
 
         # create screen
@@ -260,7 +259,7 @@ class Environment:
         v = 1  # let's make this as simple as possible, v is constant
         row = np.random.choice([v, 0],
                                self.bricks_matrix.shape[1],
-                               p=[0.6, 0.4])
+                               p=[0.5, 0.5])
 
         # if there are no zeros or is full of zeros then generate
         # another row
