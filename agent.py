@@ -24,7 +24,7 @@ import copy
 
 from game import *
 
-LEVEL_OUTPUT = 'agent_training.txt'
+LEVEL_OUTPUT = 'agent_training.csv'
 THETA_OUTPUT = 'pretrained_agent.npy'
 
 
