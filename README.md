@@ -33,10 +33,10 @@ python agent.py
 
 # What you'll find here
 
-- [x] Basic Game Environment
-- [x] Linear Function Sarsa Agent
-- [ ] Actor-Critic Agent (or some other agent that considers a continuous space of actions)
-- [ ] Make improvements in order to train faster.
+- [x] Basic Game Environment.
+- [x] Linear Function Sarsa Agent.
+- [ ] Actor-Critic Agent (or some other agent that considers a continuous space of actions).
+- [ ] Improvements in order to train faster.
 
 ---
 This game was made only for learning purposes and is not related to Brick Blast Ball in anyway.
