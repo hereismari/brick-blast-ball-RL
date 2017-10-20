@@ -3,6 +3,7 @@
 A simplified copy of the Mobile game "Brick Blast Ball" using PyGame + RL agent that can be trained on it.
 
 Linear Function Sarsa Agent training.
+
 ![](imgs/train.gif)
 
 ## How simplified is this version?
