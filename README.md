@@ -38,4 +38,5 @@ python agent.py
 - [ ] Actor-Critic Agent (or some other agent that considers a continuous space of actions)
 - [ ] Make improvements in order to train faster.
 
-> OBS: This game was made only for learning purposes and is not related to Brick Blast Ball in anyway.
+---
+This game was made only for learning purposes and is not related to Brick Blast Ball in anyway.
